@@ -17,8 +17,8 @@ const App = () => {
     <div>
       <Notification />
       <Filter />
-      <AnecdoteList />
       <AnecdoteForm />
+      <AnecdoteList />
     </div>
   );
 };
