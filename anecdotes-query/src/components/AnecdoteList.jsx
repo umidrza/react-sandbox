@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAnecdotes, updateAnecdote, deleteAnecdote } from '../requests'
+import { useNotificationActions } from '../useNotification'
 
 const AnecdoteList = () => {
   const queryClient = useQueryClient()
+  const { showNotification } = useNotificationActions()
 
   const updateAnecdoteMutation = useMutation({
     mutationFn: updateAnecdote,
@@ -19,12 +21,14 @@ const AnecdoteList = () => {
   })
 
   const handleVote = (anecdote) => {
-    updateAnecdoteMutation.mutate({ ...anecdote, votes: anecdote.votes + 1 })
+    updateAnecdoteMutation.mutate({ ...anecdote, votes: anecdote.votes + 1 });
+    showNotification(`you voted '${anecdote.content}'`);
   }
 
   const handleDelete = (anecdote) => {
     if (confirm(`Delete ${anecdote.content}`)){
-      deleteAnecdoteMutation.mutate(anecdote.id)
+      deleteAnecdoteMutation.mutate(anecdote.id);
+      showNotification(`you deleted '${anecdote.content}'`);
     }
   }
 
