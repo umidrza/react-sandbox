@@ -10,7 +10,16 @@ const NewBook = () => {
   const [genres, setGenres] = useState([]);
 
   const [addBook] = useMutation(ADD_BOOK, {
-    refetchQueries: [{ query: ALL_BOOKS }],
+    onError: (error) => {
+      console.log(error.graphQLErrors);
+    },
+    update: (cache, response) => {
+      cache.updateQuery({ query: ALL_BOOKS }, ({ allBooks }) => {
+        return {
+          allBooks: allBooks.concat(response.data.addBook),
+        }
+      })
+    },
   });
 
   const submit = async (event) => {
@@ -26,52 +35,60 @@ const NewBook = () => {
     });
 
     setTitle("");
-    setPublished("");
     setAuthor("");
+    setPublished("");
     setGenres([]);
     setGenre("");
   };
 
   const addGenre = () => {
+    if (!genre.trim()) return;
     setGenres(genres.concat(genre));
     setGenre("");
   };
 
   return (
     <div>
+      <h2>add book</h2>
+
       <form onSubmit={submit}>
         <div>
           title
           <input
             value={title}
-            onChange={({ target }) => setTitle(target.value)}
+            onChange={(e) => setTitle(e.target.value)}
           />
         </div>
+
         <div>
           author
           <input
             value={author}
-            onChange={({ target }) => setAuthor(target.value)}
+            onChange={(e) => setAuthor(e.target.value)}
           />
         </div>
+
         <div>
           published
           <input
             type="number"
             value={published}
-            onChange={({ target }) => setPublished(target.value)}
+            onChange={(e) => setPublished(e.target.value)}
           />
         </div>
+
         <div>
           <input
             value={genre}
-            onChange={({ target }) => setGenre(target.value)}
+            onChange={(e) => setGenre(e.target.value)}
           />
-          <button onClick={addGenre} type="button">
+          <button type="button" onClick={addGenre}>
             add genre
           </button>
         </div>
+
         <div>genres: {genres.join(" ")}</div>
+
         <button type="submit">create book</button>
       </form>
     </div>
