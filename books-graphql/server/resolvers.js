@@ -3,7 +3,25 @@ const Book = require("./models/book");
 const User = require("./models/user");
 const { GraphQLError } = require("graphql");
 const jwt = require("jsonwebtoken");
+const { PubSub } = require("graphql-subscriptions");
 
+const pubsub = new PubSub();
+const BOOK_ADDED = "BOOK_ADDED";
+
+const getAuthorBookCounts = async () => {
+  const counts = await Book.aggregate([
+    {
+      $group: {
+        _id: "$author",
+        bookCount: { $sum: 1 },
+      },
+    },
+  ]);
+
+  return new Map(
+    counts.map(({ _id, bookCount }) => [String(_id), bookCount])
+  );
+};
 
 const resolvers = {
   Query: {
@@ -32,7 +50,15 @@ const resolvers = {
     },
 
     allAuthors: async () => {
-      return Author.find({});
+      const [authors, bookCounts] = await Promise.all([
+        Author.find({}),
+        getAuthorBookCounts(),
+      ]);
+
+      return authors.map((author) => ({
+        ...author.toObject(),
+        bookCount: bookCounts.get(String(author._id)) ?? 0,
+      }));
     },
 
     me: (root, args, context) => {
@@ -67,7 +93,13 @@ const resolvers = {
 
         await book.save();
 
-        return book.populate("author");
+        const populatedBook = await Book.findById(book._id).populate("author");
+
+        await pubsub.publish(BOOK_ADDED, {
+          bookAdded: populatedBook,
+        });
+
+        return populatedBook;
       } catch (error) {
         throw new GraphQLError(error.message, {
           extensions: {
@@ -146,7 +178,17 @@ const resolvers = {
 
   Author: {
     bookCount: async (root) => {
+      if (typeof root.bookCount === "number") {
+        return root.bookCount;
+      }
+
       return Book.countDocuments({ author: root._id });
+    },
+  },
+
+  Subscription: {
+    bookAdded: {
+      subscribe: () => pubsub.asyncIterableIterator(BOOK_ADDED),
     },
   },
 };
